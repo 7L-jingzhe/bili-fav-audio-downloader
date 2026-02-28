@@ -22,8 +22,7 @@
 ### 1. 克隆或下载本项目
 
 ```bash
-git clone 
-cd 
+git clone https://github.com/7L-jingzhe/bili-fav-audio-downloader.git
 ```
 
 ### 2. 安装Python依赖
