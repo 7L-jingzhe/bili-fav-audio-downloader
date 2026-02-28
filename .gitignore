@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+
+# Virtual Environment
+venv/
+env/
+.venv/
+ENV/
+
+# 下载的音频目录
+/music/
+/音乐*/
+
+# 生成的JSON文件
+bvid_list.json
+bvid_only.txt
+failed_downloads.json
+
+# 日志文件
+download_error.log
+
+# 操作系统特定文件
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# yt-dlp临时文件
+*.part
+*.temp
+*.jpg
+*.jpeg
+*.webp
+*.png
