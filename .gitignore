@@ -15,6 +15,7 @@ ENV/
 /音乐*/
 
 # 生成的JSON文件
+bvid.json
 bvid_list.json
 bvid_only.txt
 failed_downloads.json
