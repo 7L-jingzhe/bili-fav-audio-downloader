@@ -278,7 +278,8 @@ def main():
         save_video_list_json(video_info_list, filename=args.output)
 
         # 同时保存一个精简的文本版本（仅BV号）
-        bvid_filename = args.output.replace("list.json", "only.txt")
+        # bvid_filename = args.output.replace("list.json", "only.txt")
+        bvid_filename = config.OUTPUT_CONFIG.get("default_txt", "bvid_only.txt")
         with open(bvid_filename, "w", encoding="utf-8") as f:
             for info in video_info_list:
                 f.write(f"{info['bvid']}\n")

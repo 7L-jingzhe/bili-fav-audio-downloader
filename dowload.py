@@ -4,7 +4,21 @@ import re
 import shutil
 import glob
 import time
-# from typing import Dict, Optional, List
+import config
+from datetime import datetime
+
+
+def log(data):
+    """保存未成功下载的音频到日志"""
+    logstr = f"{'-' * 17}\n下载失败\n{datetime.now()}\n"
+    logstr += f"bvid: {data.get('bvid')}\n"
+    logstr += f"title: {data.get('title')}\n"
+    logstr += f"artist: {data.get('artist')}\n"
+    logstr += f"error: {data.get('error')}\n\n"
+
+    log_file = config.FILE_CONFIG.get("error_log_file", "download_error.log")
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(logstr)
 
 
 def sanitize_filename(filename):
@@ -12,44 +26,28 @@ def sanitize_filename(filename):
     illegal_chars = r'[<>:"/\\|?*\x00-\x1F]'
     filename = re.sub(illegal_chars, "", filename)
     filename = re.sub(r"\s+", " ", filename).strip()
-    return filename[:100]
+    max_len = config.OUTPUT_CONFIG.get("max_filename_length", 100)
+    return filename[:max_len]
 
 
 def find_ytdlp():
     """查找 yt-dlp 的完整路径"""
-    # 尝试在系统 PATH 中查找
     ytdlp_path = shutil.which("yt-dlp")
     if ytdlp_path:
         return ytdlp_path
 
-    # 常见的安装路径
-    common_paths = [
-        os.path.expanduser("~/.local/bin/yt-dlp"),
-        os.path.expanduser(
-            "~/AppData/Local/Programs/Python/Python*/Scripts/yt-dlp.exe"
-        ),
-        "C:/Python*/Scripts/yt-dlp.exe",
-        "C:/Program Files/Python*/Scripts/yt-dlp.exe",
-    ]
-
+    common_paths = config.YTDLP_COMMON_PATHS
     for pattern in common_paths:
-        matches = glob.glob(pattern)
+        expanded = os.path.expanduser(pattern)
+        matches = glob.glob(expanded)
         if matches:
             return matches[0]
 
-    return "yt-dlp"  # 如果找不到，返回默认命令
+    return "yt-dlp"
 
 
 def check_ytdlp_available(ytdlp_cmd):
-    """
-    检查 yt-dlp 是否可用
-
-    Args:
-        ytdlp_cmd: yt-dlp 命令路径
-
-    Returns:
-        bool: 是否可用
-    """
+    """检查 yt-dlp 是否可用"""
     try:
         subprocess.run([ytdlp_cmd, "--version"], capture_output=True, check=True)
         return True
@@ -66,51 +64,19 @@ def print_ytdlp_installation_instructions():
     print("   uv pip install yt-dlp")
 
 
-def prepare_download_environment(bvid, title):
-    """
-    准备下载环境，创建必要的目录
-
-    Args:
-        bvid: 视频BV号
-        title: 视频标题
-
-    Returns:
-        tuple: (output_path, url, safe_title)
-    """
-    # 构建输出文件名
+def prepare_download_environment(bvid, title, output_dir):
+    """准备下载环境，创建必要的目录"""
     safe_title = sanitize_filename(title) if title else bvid
-    output_filename = f"{safe_title}-{bvid}.%(ext)s"
-    output_path = os.path.join("./music", output_filename)
-
-    # 确保输出目录存在
-    os.makedirs("./music", exist_ok=True)
-
-    # 视频URL
+    output_filename = f"{bvid}.%(ext)s"
+    output_path = os.path.join(output_dir, output_filename)
+    os.makedirs(output_dir, exist_ok=True)
     url = f"https://www.bilibili.com/video/{bvid}"
-
     return output_path, url, safe_title
 
 
 def build_ytdlp_command(ytdlp_cmd, output_path, url, title, artist, album):
-    """
-    构建 yt-dlp 下载命令
-
-    Args:
-        ytdlp_cmd: yt-dlp 命令路径
-        output_path: 输出文件路径
-        url: 视频URL
-        title: 视频标题
-        artist: 歌手或视频作者
-        album: 专辑
-
-    Returns:
-        list: 命令参数列表
-    """
-    # 构建传递给 ffmpeg 的元数据参数
-    # 构建元数据字符串
-    # 注意：这里需要正确处理引号和空格
+    """构建 yt-dlp 下载命令"""
     metadata_args = f'-metadata title="{title}" -metadata artist="{artist}" -metadata album="{album}"'
-
     cmd = [
         ytdlp_cmd,
         "-x",
@@ -129,35 +95,25 @@ def build_ytdlp_command(ytdlp_cmd, output_path, url, title, artist, album):
     return cmd
 
 
-def find_downloaded_file(bvid):
-    """
-    查找下载的MP3文件
-
-    Args:
-        bvid: 视频BV号
-
-    Returns:
-        list: 找到的文件路径列表
-    """
+def find_downloaded_file(bvid, output_dir):
+    """查找下载的MP3文件"""
     found_files = []
-    for file in os.listdir("./music"):
+    for file in os.listdir(output_dir):
         if bvid in file and file.endswith(".mp3"):
-            mp3_file = os.path.join("./music", file)
+            mp3_file = os.path.join(output_dir, file)
             found_files.append(mp3_file)
             print(f"文件已保存: {mp3_file}")
-
     return found_files
 
 
-def list_music_directory():
-    """列出 music 目录下的所有文件"""
-    print("music 目录中的文件:")
-    for file in os.listdir("./music"):
+def list_music_directory(output_dir):
+    """列出指定目录下的所有文件"""
+    print(f"{output_dir} 目录中的文件:")
+    for file in os.listdir(output_dir):
         print(f"  - {file}")
 
 
 def create_success_result(bvid, title, artist, file_path):
-    """创建成功结果字典"""
     return {
         "bvid": bvid,
         "title": title,
@@ -168,50 +124,44 @@ def create_success_result(bvid, title, artist, file_path):
 
 
 def create_error_result(bvid, title, error_message):
-    """创建错误结果字典"""
     return {"bvid": bvid, "title": title, "error": error_message}
 
 
 def create_file_not_found_result(bvid, title):
-    """创建文件未找到结果字典"""
-    return {
-        "bvid": bvid,
-        "title": title,
-        "status": "downloaded_but_file_not_found",
-    }
+    return {"bvid": bvid, "title": title, "status": "downloaded_but_file_not_found"}
 
 
-def download_with_ytdlp(video_info):
+def download_with_ytdlp(video_info, output_dir=None):
     """
-    使用 yt-dlp 下载音频
-    数据结构如下：
-    video_info: {
-        "bvid": "BV16H4y1Q7NS",
-        "title": "九九八十一",
-        "artist": "迷柚mio原原宿宿Yado"
-    }
+    使用 yt-dlp 下载单个音频
+
+    Args:
+        video_info: 包含 bvid, title, artist, album 的字典
+        output_dir: 输出目录，若为 None 则使用配置中的默认目录
+
+    Returns:
+        dict: 下载结果
     """
+    if output_dir is None:
+        output_dir = config.DOWNLOAD_CONFIG.get("default_output_dir", "./music")
+
     bvid = video_info.get("bvid", "")
     title = video_info.get("title", "")
     artist = video_info.get("artist", "")
-    album = video_info.get("album", "Bilibili音频")
+    default_album = config.DOWNLOAD_CONFIG.get("default_album", "Bilibili音频")
+    album = video_info.get("album", default_album)
 
-    # 打印下载信息
     print("-" * 50)
     print(f"开始下载: {bvid}")
     print(f"标题: {title}")
     print(f"歌手: {artist}")
 
-    # 检查 yt-dlp 是否可用
     ytdlp_cmd = find_ytdlp()
     if not check_ytdlp_available(ytdlp_cmd):
         print_ytdlp_installation_instructions()
         return create_error_result(bvid, title, "yt-dlp not found")
 
-    # 准备下载环境
-    output_path, url, safe_title = prepare_download_environment(bvid, title)
-
-    # 构建并执行命令
+    output_path, url, safe_title = prepare_download_environment(bvid, title, output_dir)
     cmd = build_ytdlp_command(ytdlp_cmd, output_path, url, title, artist, album)
 
     print("正在下载并转换...")
@@ -224,18 +174,16 @@ def download_with_ytdlp(video_info):
             print(f" 下载失败: {result.stderr}")
             return create_error_result(bvid, title, result.stderr)
 
-        # 下载成功
         print(f" 下载成功！")
-        time.sleep(1)  # 等待文件系统刷新
+        time.sleep(1)
 
-        # 查找下载的文件
-        found_files = find_downloaded_file(bvid)
+        found_files = find_downloaded_file(bvid, output_dir)
 
         if found_files:
             return create_success_result(bvid, title, artist, found_files[0])
         else:
             print(" 文件已下载，但找不到 MP3 文件")
-            list_music_directory()
+            list_music_directory(output_dir)
             return create_file_not_found_result(bvid, title)
 
     except Exception as e:
@@ -243,11 +191,64 @@ def download_with_ytdlp(video_info):
         return create_error_result(bvid, title, str(e))
 
 
-if __name__ == "__main__":
-    # 单个下载测试
-    video_info = {
-        "bvid": "BV16H4y1Q7NS",
-        "title": "九九八十一",
-        "artist": "迷柚mio原宿宿Yado",
-    }
-    result = download_with_ytdlp(video_info)
+def batch_download(video_list, output_dir=None, sleep_interval=3):
+    """
+    批量下载音频
+
+    Args:
+        video_list: 视频信息列表
+        output_dir: 输出目录，若为 None 则使用配置中的默认目录
+        sleep_interval: 下载间隔（秒）
+
+    Returns:
+        tuple: (all_results, failed_downloads)
+    """
+    if output_dir is None:
+        output_dir = config.DOWNLOAD_CONFIG.get("default_output_dir", "./music")
+
+    all_results = []
+    failed_downloads = []
+
+    print("\n 开始批量下载音频...")
+    print(f" 输出目录: {output_dir}")
+    print(f" 下载间隔: {sleep_interval}秒")
+    print(f" 总共 {len(video_list)} 个视频")
+    print("=" * 60)
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    for index, video_info in enumerate(video_list, 1):
+        print(f"\n 处理进度: \033[36m{index}/{len(video_list)}\033[0m")
+        print(f" 当前视频: {video_info.get('title')} - {video_info.get('artist')}")
+
+        try:
+            result = download_with_ytdlp(video_info, output_dir)
+            all_results.append(result)
+
+            if result.get("error"):
+                print(f" \033[31m下载失败，已记录到日志\033[0m")
+                log(result)
+                failed_downloads.append(video_info)
+            elif result.get("status") == "downloaded_but_file_not_found":
+                print(f" \033[33m下载成功但文件未找到\033[0m")
+            else:
+                print(f" \033[32m下载完成\033[0m")
+
+        except Exception as e:
+            print(f" \033[31m发生异常\033[0m: {e}")
+            error_data = {
+                "bvid": video_info.get("bvid"),
+                "title": video_info.get("title"),
+                "artist": video_info.get("artist"),
+                "error": str(e),
+            }
+            all_results.append(error_data)
+            log(error_data)
+            failed_downloads.append(video_info)
+            continue
+
+        if index < len(video_list):
+            print(f" 等待 {sleep_interval}秒后继续下一个...")
+            time.sleep(sleep_interval)
+
+    return all_results, failed_downloads

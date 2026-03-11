@@ -8,6 +8,7 @@ COOKIE = "buvid3=94DA5EBD-D516-81EF-CA13-0582003C9DD402651infoc; b_nut=176849000
 
 # User-Agent配置
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+
 # API请求配置
 API_CONFIG = {
     "base_delay": 3,  # 基础请求延迟（秒）
@@ -18,12 +19,44 @@ API_CONFIG = {
 # 收藏夹默认ID
 DEFAULT_FAVORITE_ID = "3623731999"
 
-# 输出文件配置
+# get_bvid程序的输出文件配置
 OUTPUT_CONFIG = {
     "default_json": "bvid_list.json",
     "default_txt": "bvid_only.txt",
     "max_filename_length": 100,
 }
+
+
+# 下载相关配置
+DOWNLOAD_CONFIG = {
+    "default_output_dir": "./music",  # 默认音频输出目录
+    "default_album": "Bilibili音频",  # 默认专辑名
+    "default_unknown_artist": "未知作者",  # 默认未知作者
+    "temp_file_extensions": [  # 临时文件扩展名（清理用）
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".png",
+        ".part",
+        ".temp",
+        ".ytdl",
+    ],
+}
+
+# 文件路径配置
+FILE_CONFIG = {
+    "failed_downloads_file": "failed_downloads.json",  # 失败记录文件
+    "error_log_file": "download_error.log",  # 错误日志文件
+    "default_input_json": "bvid.json",  # main.py 默认输入文件
+}
+
+# yt-dlp 常见安装路径（字符串，可使用通配符 * 和 ~ 家目录）
+YTDLP_COMMON_PATHS = [
+    "~/.local/bin/yt-dlp",
+    "~/AppData/Local/Programs/Python/Python*/Scripts/yt-dlp.exe",
+    "C:/Python*/Scripts/yt-dlp.exe",
+    "C:/Program Files/Python*/Scripts/yt-dlp.exe",
+]
 
 
 def get_headers():
